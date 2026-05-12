@@ -1,0 +1,69 @@
+name: CI/CD Tienda Perritos - Backend
+
+on:
+  push:
+    branches: [ "main" ]
+   
+jobs:
+  analisis-vulnerabilidad:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # O la versión que uses en tu proyecto
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install # O npm ci para ambientes de CI más estrictos
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: snyk test node
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --severity-threshold=high
+
+      - name: generate snyk JSON Report 
+        if: always()
+        run: snyk test --json > snyk-report.json || echo "Snyk encontró vulnerabilidades o falló"
+      
+      - name: upload snyk json report 
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-report
+          path: snyk-report.json
+ 
+  analisis-sonarcloud:
+      runs-on: ubuntu-latest
+      needs: analisis-vulnerabilidad 
+      steps: 
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0 # Importante para SonarCloud
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20'
+        
+        - name: Install sonar-scanner
+          run: npm install -g sonar-scanner
+
+        - name: run sonar cloud
+          env: 
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          run: |
+            sonar-scanner \
+              -Dsonar.projectKey=${{secrets.PROJECT_KEY_SONAR}} \
+              -Dsonar.organization=${secrets.ORGANIZATION_SONAR} \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.sources=. \
+              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info  
