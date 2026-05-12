@@ -7,12 +7,10 @@ on:
 jobs:
   analisis-vulnerabilidad:
     runs-on: ubuntu-latest
+    working-directory: ./backend 
     steps:
       analisis-vulnerabilidad:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend # Define la carpeta base para todos los 'run'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
